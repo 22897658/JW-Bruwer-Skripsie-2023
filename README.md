@@ -11,8 +11,8 @@ final design of the project. The following list for the tests follows as:
 
 Random Walk Test - randomWalkTest
 Information Entropy Test - infoEntropyTest
-Runs Test - 
+Runs Test - runsTest
 Binary Rank Matrix Test - matrixTest
 Frequency Test - frequencyTest
-Maurer's "Universal Statistical" Test - 
+Maurer's "Universal Statistical" Test - maurerTest 
 Scattor Plot Test - scatterTest
