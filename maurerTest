@@ -1,0 +1,61 @@
+import math
+
+def decimal_to_binary(decimal_number):
+    return bin(decimal_number)[2:].zfill(64)
+
+def lempel_ziv_complexity(sequence):
+    dictionary = {}
+    w = ''
+    complexity = 0
+    for symbol in sequence:
+        if w + symbol in dictionary:
+            w += symbol
+        else:
+            dictionary[w + symbol] = True
+            complexity += 1
+            w = symbol
+    return complexity
+
+def maurers_universal_test(binary_sequence):
+    sequence_length = len(binary_sequence)
+    block_sizes = range(1, 65)
+    complexities = []
+    
+    for block_size in block_sizes:
+        num_blocks = sequence_length // block_size
+        block_complexities = []
+        for i in range(num_blocks):
+            block_start = i * block_size
+            block_end = block_start + block_size
+            block = binary_sequence[block_start:block_end]
+            block_complexities.append(lempel_ziv_complexity(block))
+        complexities.append(sum(block_complexities) / num_blocks)
+    
+    # Calculate the test statistic
+    sum_squared_deviations = sum([(c - 2.0) ** 2 for c in complexities])
+    variance = sum_squared_deviations / 49.0  # 49 is the number of tested block sizes (1 to 64)
+    sigma = math.sqrt(variance)
+    test_statistic = (max(complexities) - 2.0) / sigma
+    
+    # Determine if the sequence passes the test
+    alpha = 0.01  # Significance level (adjust as needed)
+    pass_test = abs(test_statistic) < 2.576  # Critical value for a two-sided test at alpha=0.01
+    
+    return pass_test, test_statistic
+
+# Read decimal numbers from the text file and convert to binary
+with open("/Users/Admin/Desktop/Skripsie/Bestellings'/Test3.txt", 'r') as file:
+    decimal_numbers = [int(line.strip()) for line in file]
+
+binary_numbers = [decimal_to_binary(number) for number in decimal_numbers]
+binary_sequence = ''.join(binary_numbers)
+
+# Perform Maurer's Universal Statistical Test
+pass_test, test_statistic = maurers_universal_test(binary_sequence)
+
+if pass_test:
+    print("The sequence passes Maurer's Universal Statistical Test.")
+else:
+    print("The sequence does not pass Maurer's Universal Statistical Test.")
+    
+print("Test Statistic:", test_statistic)
