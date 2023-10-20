@@ -9,10 +9,10 @@ are explained inside the Arduino code file.
 The next files are the Python programs that are used to test the quality of the
 final design of the project. The following list for the tests follows as:
 
-Random Walk Test-
-Information Entropy Test-
-Runs Test-
-Binary Rank Matrix Test-
-Frequency Test-
-Maurer's "Universal Statistical" Test-
-Scattor Plot Test-
+Random Walk Test - randomWalkTest
+Information Entropy Test - infoEntropyTest
+Runs Test - 
+Binary Rank Matrix Test - matrixTest
+Frequency Test - frequencyTest
+Maurer's "Universal Statistical" Test - 
+Scattor Plot Test - scatterTest
