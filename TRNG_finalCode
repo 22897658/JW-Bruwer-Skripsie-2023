@@ -1,0 +1,275 @@
+/*
+  True/Psuedo Random Number Generator
+
+  This program has two types of random number generators: Radioactive decay
+  combined with a psuedo-random generator (Xoroshi128+) and Atmospheric
+  noise true random number generator. Both generate 64-bit random numbers.
+
+  Modified on 10 September 2023
+  Written by Johannes Willem Bruwer
+
+*/
+
+// INCLUDES
+#include <SHA256.h>                         // Seed compiling function library
+#include <Hash.h>                           // Seed scrambing function library
+#include <LiquidCrystal.h>                  // LCD function library
+#include <DFRobot_DF1101S.h>                // Audio recorder function library
+
+// DEFINE VARIABLES
+#define GEIGER_INPUT_PIN 2                  // Digital input pin for the Geiger counter (Pin D2)
+#define LCD_RS_PIN A3                       // Analog output pin for LCD register select
+#define LCD_E_PIN A4                        // Analog output pin for LCD enable 
+#define LCD_D4_PIN 4                        // Digital output pin for LCD data
+#define LCD_D5_PIN 5                        // Digital output pin for LCD data
+#define LCD_D6_PIN 6                        // Digital output pin for LCD data
+#define LCD_D7_PIN 7                        // Digital output pin for LCD data
+#define ATMOS_BUTTON 9                      // Digital input pin for Atmospheric generator select (Pin D9)
+#define RAD_BUTTON 10                       // Digital input pin for Radioactive generator select (pin D10)
+
+// GLOBAL VARIABLES
+int pinState = LOW;                         // Pin state of pin D2
+int beginVal = 0;                           // Starting range for seed generation
+int endVal = 100;                           // End rang for seed generation
+int seedRanNum[] = {0};                     // Array to store Geiger counter random numbers
+int j = 1;
+int numRun = 0;                             // Run time for one seed
+int seedFlag = 0;                           // Flag to show seed generation is complete
+int generateFlag = 0;                       // Flag to indicate random number generation can begin
+const int numGeigerOutputs = 10;            // Array size of Geiger counter outputs
+uint16_t combinedBits = 0;                  
+uint8_t hashVal[64];
+uint64_t seedValue = 0;                     // Generated seed
+int seedCounter = 0;                        // Count the number of times the seed is used for number generation
+uint64_t xoroshiro128plus_state[2];         
+uint64_t randomNumber = 0;                  // Generated random number
+int valArray[64];                           // Array to store data points from noise
+int bit64Counter = 0;                       // Counter for 64-bit number generation
+int RADbuttonState = 0;                     // Default button state for Radioactive generator
+int ATMOSbuttonState = 0;                   // Default button state for Atmospheric generator
+int ATMOSsetupFlag = 0;                     // Flag to setup Atmospheric generator
+int RADsetupFlag = 0;                       // Flag to setup Radioactive generator
+
+// FUNCTIONS
+/* 
+  This function checks the state of pin D2, if the pin is HIGH it indicates
+  that a pulse has been detected from the Geiger counter.
+*/
+void geigerPulse(){
+
+  pinState = digitalRead(GEIGER_INPUT_PIN);
+
+}
+
+/*
+  This function uses bit shift and rotate-based linear transformation to
+  generate the random numbers from the generated seed of the Geiger counter.
+*/
+uint64_t xoroshiro128plus(){
+
+  uint64_t s0 = xoroshiro128plus_state[0];                                  // Store orginal seed to a variable
+  uint64_t s1 = xoroshiro128plus_state[1];                                  // Store modified seed to a variable
+  uint64_t result = s0 + s1;                                                // Combine s0 and s1 to generate random number
+
+  s1 ^= s0;                                                                 // Bitwise XOR 
+  xoroshiro128plus_state[0] = ((s0 << 24) | (s0 >> 9)) ^ s1 ^ (s1 << 16);   // Bit shift and XOR values
+  xoroshiro128plus_state[1] = (s1 << 37) | (s1 >> 28);                      
+
+  return result;
+}
+
+/* 
+  This function checks the state of pin D9, if the pin is HIGH it indicates
+  that the button for Atmospheric generator has been selected.
+*/
+void ATMOSbuttonFunction(){
+
+  ATMOSbuttonState = digitalRead(ATMOS_BUTTON);
+  RADbuttonState = LOW;
+  ATMOSsetupFlag = 1;
+  RADsetupFlag = 0;
+
+}
+
+/* 
+  This function checks the state of pin D10, if the pin is HIGH it indicates
+  that the button for Radioactive generator has been selected.
+*/
+void RADbuttonFunction(){
+
+  RADbuttonState = digitalRead(RAD_BUTTON);
+  ATMOSbuttonState = LOW;
+  ATMOSsetupFlag = 0;
+  RADsetupFlag = 1;
+
+}
+
+/*
+  This function combines the 0 and 1 bits that is stored in valArray to 
+  develop the 64-bit random number to be generated.
+*/
+void generateRandomNumber(){
+
+  uint64_t AtmosrandomNumber = 0;                                                       // Variable to store generated true random number
+
+  for(int i = 0; i < 64; i++)                                                           // For loop to run through the valArray
+  {
+    AtmosrandomNumber |= ((uint64_t)valArray[i] << (64 - 1 - i));                       // Add and bit-shift array values together
+  }
+
+  Serial.println(AtmosrandomNumber);                                                    // Print generated true random number to serial comunication terminal
+}
+
+SHA256 sha256;                                                                          // Intialize SHA256 instance
+LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN,
+                 LCD_D6_PIN, LCD_D7_PIN);                                               // Intialize LCD with the respective pins
+DFRobot_DF1101S df1101s;                                                                // Initialize audio recorder instance
+
+// PROGRAM SETUP LOOP
+void setup() {
+  
+  lcd.begin(16, 2);                                                                     // Intialize LCD communication
+  lcd.setCursor(0, 0);
+  lcd.print("Booting...");
+
+  pinMode(GEIGER_INPUT_PIN, INPUT);                                                     // Set pin D2 as an input
+  attachInterrupt(digitalPinToInterrupt(GEIGER_INPUT_PIN), geigerPulse, RISING);        // Set pin D2 as an interrupt with a RISING edge interrupt with geigerPulse function
+  Serial.begin(115200);                                                                 // Initialize serial communications with a baude rate of 115200 bits/s
+  Serial1.begin(115200);                                                                // Initialize serial communication for the audio recorder with a baude rate of 115200 bits/s
+
+  pinMode(RAD_BUTTON, INPUT);                                                           // Set pin D10 as an input 
+  pinMode(ATMOS_BUTTON, INPUT);                                                         // Set pin D9 as an input
+  attachInterrupt(digitalPinToInterrupt(RAD_BUTTON), RADbuttonFunction, RISING);        // Set pin D10 as an interrupt with a RISING edge interrupt with RADbuttonFunction
+  attachInterrupt(digitalPinToInterrupt(ATMOS_BUTTON), ATMOSbuttonFunction, RISING);    // Set pin D9 as an interrupt with a RISING edge interrupt with ATMOSbuttonFunction
+  
+  lcd.clear();                                                                          // Clear LCD screen
+  lcd.setCursor(0, 0);
+  lcd.print("Rad -> Green");                                                            // Show user which button is for Radioactive generator
+  lcd.setCursor(0, 1);
+  lcd.print("Atmos -> Blue");                                                           // Show user which button is for Atmospheric generator
+}
+
+// PROGAM MAIN LOOP
+void loop() {
+
+if(RADbuttonState == HIGH){
+
+  if(RADsetupFlag == 1){
+  
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Radioactive");
+    lcd.setCursor(0, 1);
+    lcd.print("Generator");
+
+    RADsetupFlag = 0;
+
+  }
+
+  for(int i = beginVal; i < endVal; i++)                                  // Continuosly run through the range 0 - 100
+  {
+    if(pinState == HIGH)                                                  // Check if the Geiger counter detected decay
+    {
+      pinState = LOW;
+      seedRanNum[j] = i;                                                  // Store value in array
+      j++;
+    }
+    if(j = 11){                                                           // Check if 10 values have been generated
+
+    for(int i = 0; i < 20; i++)                                           // Continously run through range of 0 - 20
+    {
+      if(pinState == HIGH)                                                //Check if the Geiger counter dectected decay
+      {
+        pinState = LOW;
+        numRun = i;                                                       // Store seed run time value
+      }
+    }
+      seedFlag = 1;                                                       // Indicate pre-seed is generated
+      j = 0;
+    }
+  }
+
+  if((seedFlag == 1) && (generateFlag == 0)){                             // Check if pre-seed is generated
+
+    for(int a = 1; a < numGeigerOutputs; a++)
+    {
+      combinedBits = (combinedBits << 7) | seedRanNum[a];                 // Combine Geiger counter values into one variable
+    }
+
+    sha256.update((uint8_t*)&combinedBits, sizeof(combinedBits));         // Hash combined Geiger counter values
+    sha256.finalize(hashVal, sizeof(hashVal));
+   
+
+    for(int b = 0; b < 8; b++)
+    {
+      seedValue = (seedValue << 8) | hashVal[b];                          // Randominze bit positioning of seed value
+    }
+
+    generateFlag = 1;                                                     // Indicate that number generation can begin
+    xoroshiro128plus_state[0] = seedValue;                                // Store original seed in array
+    xoroshiro128plus_state[1] = seedValue ^ 0xDEADBEEF;                   // Store modified seed in array
+
+  }
+
+  if(generateFlag == 1){                                                  // Check if random number can be generated                                      
+  randomNumber = xoroshiro128plus();                                      // Generate random number
+  Serial.println(randomNumber);                                           // Print number generation to serial comms
+  seedCounter++;
+
+  if(seedCounter == numRun){                                              // Check if the runtime of the seed is completed
+    generateFlag = 0;
+    seedCounter = 0;
+  }
+  }
+}
+
+if(ATMOSbuttonState == HIGH){
+
+  if(ATMOSsetupFlag == 1){
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Booting...");
+
+    delay(4000);   
+
+    while(!df1101s.begin(Serial1))                                                    // Check if the audio recorder is connected for communcation via UART
+  {
+    Serial.println("Audio recorder is not connected!");
+    delay(2000);
+  }                
+
+    df1101s.switchFunction(df1101s.MUSIC);                                            // Switch audio recorder to play mode
+    delay(3000);                                                                      // Give allocated time to switch modes
+
+    df1101s.setPlayMode(df1101s.ALLCYCLE);                                            // Set playmode to play all files
+    delay(3000);                                                                      // Give allocated time to set playmode
+
+    df1101s.playSpecFile(0);                                                          // Play file 0 on the audio recorder
+    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Atmospheric");
+    lcd.setCursor(0, 1);
+    lcd.print("Generator");
+
+    ATMOSsetupFlag = 0;
+  }
+
+  int analogVal = analogRead(A1);                         // Read DAC value from audio recorder with pin A1
+
+  if(analogVal >= 400){                                   // Check if ADC value is begger than 400
+    valArray[bit64Counter] = 1;                           // Store value of 1 at position bit64Counter
+  }else{
+    valArray[bit64Counter] = 0;                           // Store value of 0 at position bit64Counter
+  }
+
+  if(bit64Counter == 64){                                 // Check if bit64Counter has reached 64
+    generateRandomNumber();                               // Generate 64-bit true random number
+    bit64Counter = 0;                                     // Reset bit64Counter
+  }
+
+  bit64Counter++;                  
+
+}
+}
