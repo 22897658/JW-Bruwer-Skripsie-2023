@@ -1,0 +1,34 @@
+import numpy as np
+
+# Function to convert decimal to binary and return a 64-bit string
+def decimal_to_binary(decimal):
+    return bin(decimal)[2:].zfill(64)
+
+# Read the decimal numbers from the text file and convert to binary
+binary_data = []
+with open("/Users/Admin/Desktop/Skripsie/Bestellings'/PseudoData.txt", 'r') as file:
+    for line in file:
+        decimal_number = int(line.strip())  # Read and convert to integer
+        binary_data.append(decimal_to_binary(decimal_number))
+
+# Create a binary matrix
+binary_matrix = np.array([list(map(int, binary_str)) for binary_str in binary_data])
+
+# Calculate the rank of the binary matrix
+rank = np.linalg.matrix_rank(binary_matrix)
+
+# Calculate the expected rank (minimum of rows and columns)
+expected_rank = min(binary_matrix.shape)
+
+# Perform hypothesis testing or compare the rank with expected_rank as needed
+# You can use statistical tests here to determine if the rank is consistent with randomness
+
+# Print the results
+print(f"Observed Rank: {rank}")
+print(f"Expected Rank: {expected_rank}")
+
+# Example: Check if observed rank is significantly different from expected rank
+if rank < expected_rank:
+    print("The observed rank is lower than expected. It may indicate non-randomness.")
+else:
+    print("The observed rank is consistent with randomness.")
