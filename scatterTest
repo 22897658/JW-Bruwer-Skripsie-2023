@@ -1,0 +1,26 @@
+import matplotlib.pyplot as plt
+
+# Function to read random numbers from a text file
+def read_random_numbers(filename):
+    with open(filename, 'r') as file:
+        random_numbers = [int(line.strip()) for line in file]
+    return random_numbers
+
+# Function to create a scatter plot
+def create_scatter_plot(random_numbers):
+    plt.figure(dpi = 300)
+    plt.scatter(range(len(random_numbers)), random_numbers, marker='.')
+    plt.xlabel('Index')
+    plt.ylabel('Random Number')
+    plt.show()
+
+# Main function
+if __name__ == "__main__":
+    # Replace 'random_numbers.txt' with the actual path to your text file
+    filename = "/Users/Admin/Desktop/Skripsie/Bestellings'/Test3.txt"
+    
+    # Read random numbers from the file
+    random_numbers = read_random_numbers(filename)
+    
+    # Create and display the scatter plot
+    create_scatter_plot(random_numbers)
