@@ -1,0 +1,32 @@
+import numpy as np
+from scipy.stats import chisquare
+
+# Read the numbers from the text file into a list
+with open("/Users/Admin/Desktop/Skripsie/Bestellings'/Random.orgData.txt", 'r') as file:
+    numbers = [int(line.strip()) for line in file]
+
+# Define the number of bins
+num_bins = 64
+
+# Count observed frequencies
+observed_frequencies, _ = np.histogram(numbers, bins=num_bins)
+
+# Calculate expected frequencies
+total_observations = len(numbers)
+expected_frequencies = np.full(num_bins, total_observations / num_bins)
+
+# Perform Chi-Square test
+chi_square_statistic, p_value = chisquare(observed_frequencies, f_exp=expected_frequencies)
+
+# Set significance level
+alpha = 0.05
+
+# Output the p-value and test result
+print(f"Chi-Square Statistic: {chi_square_statistic}")
+print(f"P-Value: {p_value}")
+
+# Compare with critical value
+if p_value < alpha:
+    print("Reject the null hypothesis. The numbers are not uniformly distributed.")
+else:
+    print("Fail to reject the null hypothesis. The numbers are uniformly distributed.")
