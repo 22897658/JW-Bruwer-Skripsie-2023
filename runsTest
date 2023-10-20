@@ -1,0 +1,34 @@
+import numpy as np
+from scipy import stats
+
+# Read the random numbers from a text file
+def read_random_numbers(filename):
+    with open(filename, 'r') as file:
+        random_numbers = [int(line.strip()) for line in file]
+    return random_numbers
+
+# Perform the runs test
+def runs_test(random_numbers):
+    runs = [1 if random_numbers[i] < random_numbers[i + 1] else 0 for i in range(len(random_numbers) - 1)]
+    runs_count = sum(runs) + 1
+    expected_runs = (2 * len(random_numbers) - 1) / 3
+    expected_std_dev = (16 * len(random_numbers) - 29) / 90
+    z_score = (runs_count - expected_runs) / expected_std_dev
+    p_value = 2 * (1 - stats.norm.cdf(abs(z_score)))
+    return z_score, p_value
+
+# Main function
+if __name__ == '__main__':
+    filename = "/Users/Admin/Desktop/Skripsie/Bestellings'/PseudoData.txt"  # Replace with your file name
+    random_numbers = read_random_numbers(filename)
+    z_score, p_value = runs_test(random_numbers)
+    
+    print(f"Z-Score: {z_score}")
+    print(f"P-Value: {p_value}")
+    
+    # Determine if the sequence is statistically random
+    alpha = 0.05  # Adjust as needed for your significance level
+    if p_value < alpha:
+        print("The sequence is not statistically random.")
+    else:
+        print("The sequence is statistically random.")
