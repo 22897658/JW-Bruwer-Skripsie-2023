@@ -1,0 +1,58 @@
+import matplotlib.pyplot as plt
+import random
+import numpy as np
+
+random.seed(123)
+
+# Function to perform a 2-D random walk
+def random_walk_64(num_steps, step_size=1):
+    x, y = 0, 0
+    x_values, y_values = [x], [y]
+    
+    for _ in range(num_steps):
+        # Generate two random numbers between -1 and 1, and scale them
+        dx = (random.random() - 0.5) * 2 * step_size
+        dy = (random.random() - 0.5) * 2 * step_size
+        
+        # Update the position
+        x += dx
+        y += dy
+        
+        x_values.append(x)
+        y_values.append(y)
+    
+    return x_values, y_values
+
+# Read random numbers from a text file (assuming one per line)
+random_numbers = []
+with open("/Users/Admin/Desktop/Skripsie/Bestellings'/Random.orgData.txt", 'r') as file:
+    for line in file:
+        random_numbers.append(int(line.strip()))
+
+# Set the number of steps for the random walk
+num_steps = len(random_numbers)
+
+# Set the step size for scaling the random numbers
+# Adjust this value to control the step size in the random walk
+step_size = 0.01
+
+# Perform a 2-D random walk using the scaled random numbers
+x_values, y_values = random_walk_64(num_steps, step_size)
+
+# Calculate the radius of the circle as the square root of the number of steps
+#circle_radius = np.sqrt(32646)/300
+max_x = max(abs(max(x_values)), abs(min(x_values)))
+circle_radius = max_x
+
+# Plot the random walk
+plt.figure(figsize=(8, 6), dpi = 300)
+plt.plot(x_values, y_values, marker=',', linestyle='-')
+plt.xlabel('X Position')
+plt.ylabel('Y Position')
+
+# Add a circle to the plot
+circle = plt.Circle((0, 0), circle_radius, fill=False, color='red')
+plt.gca().add_patch(circle)
+
+plt.grid(True)
+plt.show()
